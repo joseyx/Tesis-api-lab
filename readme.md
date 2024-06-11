@@ -30,10 +30,9 @@ python -m venv env
 
 Activa el entorno virtual:
 
-- En Windows:
-  ```bash
-  .\env\Scripts\activate
-  ```
+```bash
+.\env\Scripts\activate
+```
 
 ### 3. Instalar Dependencias
 
