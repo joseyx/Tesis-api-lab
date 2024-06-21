@@ -16,9 +16,5 @@ class User(AbstractUser):
 
     user_image = models.ImageField(upload_to='user_images/', null=True, blank=True)
 
-    apt = models.CharField(null=True)
-    apt_type = models.CharField(null=True)
-    apt_results = models.CharField(null=True)
-
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []

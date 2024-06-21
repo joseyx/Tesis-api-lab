@@ -3,12 +3,18 @@ from .models import User
 from .validators import validate_image_file_extension
 
 
+class SimpleUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['name']
+
+
 class UserSerializer(serializers.ModelSerializer):
     user_image = serializers.ImageField(validators=[validate_image_file_extension], required=False)
 
     class Meta:
         model = User
-        fields = ['id', 'name', 'email', 'password', 'role', 'phone', 'user_image', 'apt', 'apt_type', 'apt_results']
+        fields = ['id', 'name', 'email', 'password', 'role', 'phone', 'user_image']
         extra_kwargs = {
             'password': {'write_only': True}
         }
