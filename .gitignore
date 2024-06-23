@@ -1,5 +1,12 @@
 ### Python template
 
+.venv
+media
+../.vscode/
+./
+../Tesis-api-lab/
+
+
 # Pycharm
 .idea/
 
