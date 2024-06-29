@@ -1,3 +1,5 @@
+from rest_framework.permissions import IsAuthenticated
+
 from .models import User
 from .serializers import UserSerializer
 from rest_framework import status
@@ -7,7 +9,7 @@ from django.core.files.storage import default_storage
 from rest_framework.serializers import ValidationError
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.parsers import MultiPartParser, FormParser
-
+from django.conf import settings
 
 import jwt
 import datetime
@@ -24,8 +26,11 @@ class RegisterView(APIView):
 
 class LoginView(APIView):
     def post(self, request):
-        email = request.data['email']
-        password = request.data['password']
+        email = request.data.get('email')
+        password = request.data.get('password')
+
+        if not email or not password:
+            raise AuthenticationFailed('Email and password are required')
 
         user = User.objects.filter(email=email).first()
 
@@ -41,21 +46,15 @@ class LoginView(APIView):
             'iat': datetime.datetime.now(datetime.UTC)
         }
 
-        token = jwt.encode(payload, 'secret', algorithm='HS256')
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
 
-        response = Response()
-
-        response.set_cookie(key='jwt', value=token, httponly=True)
-
-        user.last_login = datetime.datetime.now()
+        user.last_login = datetime.datetime.now(datetime.UTC)
         user.save()
 
-        response.data = {
+        return Response({
             'message': 'login success',
             'jwt': token
-        }
-
-        return response
+        })
 
 
 class UserView(APIView):
@@ -66,7 +65,7 @@ class UserView(APIView):
             raise AuthenticationFailed('Unauthenticated')
 
         try:
-            payload = jwt.decode(token, 'secret', algorithms=['HS256'])
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed('Unauthenticated')
 
@@ -213,3 +212,13 @@ class UserViewApiDetail(APIView):
         }
 
         return Response(status=status.HTTP_200_OK, data=response)
+
+
+class ProtectedView(APIView):
+
+    def get(self, request):
+        if not hasattr(request, 'usuario'):
+            return Response({'error': 'Unauthenticated'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        user = request.usuario
+        return Response({'message': f'Hello, {user.email}'})
