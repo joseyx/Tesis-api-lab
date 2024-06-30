@@ -55,7 +55,24 @@ class ChatbotView(APIView):
         prompt = get_combined_instructions()
         return JsonResponse({"message": prompt}, status=200)
 
-# tesis/chatbot/views.py
+
+class UserChatMessageCreateAPIView(APIView):
+    def get(self, request):
+        if not hasattr(request, 'usuario'):
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+        user = User.objects.get(id=request.usuario.id)
+        messages = ChatMessage.objects.filter(user=user).order_by('timestamp')
+        response = []
+        for message in messages:
+            response.append({
+                "role": message.role,
+                "content": message.content,
+                "timestamp": message.timestamp,
+            })
+
+        # return JsonResponse(response, status=200)
+        return JsonResponse({"messages": response}, status=200)
 
 
 class InstructionListCreateAPIView(APIView):
