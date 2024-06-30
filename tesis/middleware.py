@@ -4,6 +4,7 @@ from tesis.users.models import User
 from rest_framework.exceptions import AuthenticationFailed
 from django.conf import settings
 
+
 class JWTAuthenticationMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -20,11 +21,9 @@ class JWTAuthenticationMiddleware:
                 request.usuario = User.objects.get(id=user_id)
 
             except jwt.ExpiredSignatureError:
-                raise AuthenticationFailed('Token is expired')
-            except jwt.InvalidTokenError:
-                raise AuthenticationFailed('Invalid token')
-            except User.DoesNotExist:
-                raise AuthenticationFailed('User not found')
+                print('Token has expired')
+            except jwt.InvalidSignatureError:
+                print('Token has invalid signature')
 
         response = self.get_response(request)
         return response
