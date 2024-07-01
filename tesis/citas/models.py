@@ -13,7 +13,7 @@ class Citas(models.Model):
     paciente = models.ForeignKey(User, on_delete=models.CASCADE, related_name='citas')
     date = models.DateTimeField()
     description = models.TextField()
-    resultado = models.TextField()
+    resultado = models.TextField(default='')
     estado = models.CharField(max_length=10, choices=ESTADOS_CHOICES, default='pendiente')
 
     def __str__(self):
