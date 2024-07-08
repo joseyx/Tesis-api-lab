@@ -11,6 +11,7 @@ class Citas(models.Model):
     ]
 
     paciente = models.ForeignKey(User, on_delete=models.CASCADE, related_name='citas')
+    medico = models.ForeignKey(User, on_delete=models.CASCADE, related_name='citas_medico', limit_choices_to={'role': 'medico'})
     date = models.DateTimeField()
     description = models.TextField()
     resultado = models.TextField(default='')

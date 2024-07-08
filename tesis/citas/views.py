@@ -1,15 +1,17 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
-from rest_framework.exceptions import AuthenticationFailed, ValidationError
-from django.core.files.storage import default_storage
-from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Citas
 from .serializers import CitasSerializer
 from tesis.users.models import User
 
+from django.conf import settings
+
 import jwt
-import datetime
+from jwt.exceptions import ExpiredSignatureError, InvalidSignatureError
+
+JWT_SECRET = settings.SECRET_KEY
 
 
 # Create your views here.
@@ -19,6 +21,11 @@ class CitasAllView(APIView):
         token = request.COOKIES.get('jwt')
 
         if not token:
+            raise AuthenticationFailed('Unauthenticated')
+
+        try:
+            jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        except (ExpiredSignatureError, InvalidSignatureError):
             raise AuthenticationFailed('Unauthenticated')
 
         serializer = CitasSerializer(Citas.objects.all(), many=True)
@@ -33,11 +40,19 @@ class CitasListView(APIView):
             raise AuthenticationFailed('Unauthenticated')
 
         try:
-            payload = jwt.decode(token, 'secret', algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        except (ExpiredSignatureError, InvalidSignatureError):
             raise AuthenticationFailed('Unauthenticated')
 
-        citas = Citas.objects.filter(paciente_id=payload['id'])
+        user = User.objects.filter(id=payload['id']).first()
+        if user is None:
+            raise AuthenticationFailed('User not found')
+
+        if user.role == 'medico':
+            citas = Citas.objects.filter(medico=user)
+        else:
+            citas = Citas.objects.filter(paciente=user)
+
         serializer = CitasSerializer(citas, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -50,17 +65,25 @@ class CitasCreateView(APIView):
             raise AuthenticationFailed('Unauthenticated')
 
         try:
-            payload = jwt.decode(token, 'secret', algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        except (ExpiredSignatureError, InvalidSignatureError):
             raise AuthenticationFailed('Unauthenticated')
 
         user = User.objects.filter(id=payload['id']).first()
         if user is None:
             raise AuthenticationFailed('User not found')
 
-        serializer = CitasSerializer(data=request.data)
+        data = request.data.copy()
+        data['paciente'] = user.id
+
+        medico_id = data.get('medico')
+        medico = User.objects.filter(id=medico_id, role='medico').first()
+        if medico is None:
+            raise AuthenticationFailed('Medico not found or not a medico')
+
+        serializer = CitasSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(paciente=user)
+        serializer.save(paciente=user, medico=medico)
 
         response = {
             'message': 'Appointment created successfully',
@@ -82,6 +105,11 @@ class CitasDetailView(APIView):
         if not token:
             raise AuthenticationFailed('Unauthenticated')
 
+        try:
+            jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        except (ExpiredSignatureError, InvalidSignatureError):
+            raise AuthenticationFailed('Unauthenticated')
+
         cita = self.get_object(id)
 
         if cita is None:
@@ -101,8 +129,8 @@ class CitasDetailView(APIView):
             raise AuthenticationFailed('Unauthenticated')
 
         try:
-            payload = jwt.decode(token, 'secret', algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        except (ExpiredSignatureError, InvalidSignatureError):
             raise AuthenticationFailed('Unauthenticated')
 
         cita = self.get_object(id)
@@ -127,8 +155,8 @@ class CitasDetailView(APIView):
             raise AuthenticationFailed('Unauthenticated')
 
         try:
-            payload = jwt.decode(token, 'secret', algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        except (ExpiredSignatureError, InvalidSignatureError):
             raise AuthenticationFailed('Unauthenticated')
 
         cita = self.get_object(id)
