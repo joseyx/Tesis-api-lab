@@ -17,12 +17,19 @@ class ChatbotView(APIView):
     def post(self, request, *args, **kwargs):
         # Parse JSON data
         data = json.loads(request.body)
-        user_input = data.get("input")
+        user_input = data.get("message")
 
         if not user_input:
             return JsonResponse({"error": "Missing input field."}, status=400)
 
-        history = []
+        history = [
+            {
+                "role": "model",
+                "parts": [
+                    "Hola, soy el chatbot de TesisLaboratorios. ¿En qué puedo ayudarte?",
+                ],
+            }
+        ]
         if hasattr(request, 'usuario'):
             user = User.objects.get(id=request.usuario.id)
 
