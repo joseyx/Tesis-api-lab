@@ -43,14 +43,9 @@ backup_prompt = ("Eres un asistente virtual para un laboratorio clinico en San D
                  "a ofrecer servicios de alta calidad con un enfoque en la salud y bienestar de nuestros pacientes, "
                  "utilizando tecnología de punta y un equipo profesional altamente calificado.\nPara agendar citas el "
                  "unico"
-                 "metodo es acceder al siguiente enlace: www.agendatucita.com\n\nDebes responder siempre de forma "
-                 "cordial y"
-                 "unicamente a preguntas relacionadas con el laboratorio y los servicios ofrecidos.")
+                 "metodo es acceder al siguiente enlace: http://localhost:4200/citas\n\nDebes responder siempre de "
+                 "forma cordial y unicamente a preguntas relacionadas con el laboratorio y los servicios ofrecidos.")
 
 
 def get_combined_instructions():
-    instructions = Instruction.objects.all().order_by('created_at')
-    combined_instructions = "\n".join([instruction.content for instruction in instructions])
-    if not combined_instructions:
-        combined_instructions = backup_prompt
-    return combined_instructions
+    return backup_prompt

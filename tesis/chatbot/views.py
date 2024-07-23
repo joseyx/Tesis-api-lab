@@ -26,7 +26,7 @@ class ChatbotView(APIView):
             {
                 "role": "model",
                 "parts": [
-                    "Hola, soy el chatbot de TesisLaboratorios. ¿En qué puedo ayudarte?",
+                    "Hola, soy el chatbot de LabSky. ¿En qué puedo ayudarte?",
                 ],
             }
         ]
