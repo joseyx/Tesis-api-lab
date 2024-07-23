@@ -1,3 +1,5 @@
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.permissions import IsAuthenticated
 
 from .models import User
@@ -18,12 +20,24 @@ import datetime
 # Create your views here.
 class RegisterView(APIView):
     def post(self, request):
-        serializer = UserSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+        try:
+            serializer = UserSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+        except ValidationError as e:
+            if 'email' in e.detail:
+                return Response(
+                    status=status.HTTP_400_BAD_REQUEST,
+                    data={'error': 'Email already in use'}
+                )
+            else:
+                return Response(status=status.HTTP_400_BAD_REQUEST, data=e.detail)
 
 
+
+
+@method_decorator(csrf_exempt, name='dispatch')
 class LoginView(APIView):
     def post(self, request):
         email = request.data.get('email')
@@ -42,7 +56,7 @@ class LoginView(APIView):
 
         payload = {
             'id': user.id,
-            'exp': datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=60),
+            'exp': datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=360),
             'iat': datetime.datetime.now(datetime.UTC)
         }
 
@@ -133,8 +147,8 @@ class UserViewApiDetail(APIView):
         except User.DoesNotExist:
             return None
 
-    def get(self, request, id):
-        user = self.get_object(id)
+    def get(self, request, user_id):
+        user = self.get_object(user_id)
 
         token = request.COOKIES.get('jwt')
 
@@ -147,7 +161,7 @@ class UserViewApiDetail(APIView):
         serializer = UserSerializer(user)
 
         response = {
-            'message': f'User {id}',
+            'message': f'User {user_id}',
             'data': serializer.data
         }
 
@@ -212,6 +226,16 @@ class UserViewApiDetail(APIView):
         }
 
         return Response(status=status.HTTP_200_OK, data=response)
+
+
+class UsuarioView(APIView):
+
+    def get(self, request):
+        if hasattr(request, 'usuario'):
+            user = User.objects.get(id=request.usuario.id)
+            serializer = UserSerializer(user)
+            return Response(serializer.data)
+        return Response(status=status.HTTP_401_UNAUTHORIZED)
 
 
 class ProtectedView(APIView):
