@@ -35,8 +35,6 @@ class RegisterView(APIView):
                 return Response(status=status.HTTP_400_BAD_REQUEST, data=e.detail)
 
 
-
-
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(APIView):
     def post(self, request):

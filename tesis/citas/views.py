@@ -27,19 +27,13 @@ class CitasAllView(APIView):
 
 class CitasListView(APIView):
     def get(self, request):
-        token = request.COOKIES.get('jwt')
 
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
-
-        try:
-            payload = jwt.decode(token, 'secret', algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            raise AuthenticationFailed('Unauthenticated')
-
-        citas = Citas.objects.filter(paciente_id=payload['id'])
-        serializer = CitasSerializer(citas, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if hasattr(request, 'usuario'):
+            citas = Citas.objects.filter(paciente=request.usuario.id)
+            serializer = CitasSerializer(citas, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
 
 
 class CitasCreateView(APIView):
