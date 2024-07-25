@@ -63,10 +63,13 @@ class LoginView(APIView):
         user.last_login = datetime.datetime.now(datetime.UTC)
         user.save()
 
-        return Response({
+        response = Response({
             'message': 'login success',
             'jwt': token
         })
+        response.set_cookie('jwt', token, httponly=True)
+        request.session['user_id'] = user.id
+        return response
 
 
 class UserView(APIView):
@@ -91,6 +94,7 @@ class LogoutView(APIView):
     def post(self, request):
         response = Response()
         response.delete_cookie('jwt')
+        request.session.flush()
         response.data = {
             'message': 'logout success'
         }
@@ -102,21 +106,12 @@ class UserViewApi(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request):
-        token = request.COOKIES.get('jwt')
-
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
-
-        serializer = UserSerializer(User.objects.all(), many=True)
+        users = User.objects.all()
+        serializer = UserSerializer(users, many=True)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def post(self, request):
         serializer = UserSerializer(data=request.data)
-
-        token = request.COOKIES.get('jwt')
-
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
 
         try:
             serializer.is_valid(raise_exception=True)
@@ -139,42 +134,24 @@ class UserViewApi(APIView):
 
 
 class UserViewApiDetail(APIView):
-    def get_object(self, id):
+    def get_object(self, user_id):
         try:
-            return User.objects.get(pk=id)
+            return User.objects.get(pk=user_id)
         except User.DoesNotExist:
             return None
 
     def get(self, request, user_id):
         user = self.get_object(user_id)
-
-        token = request.COOKIES.get('jwt')
-
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
-
         if user is None:
-            return Response(status=status.HTTP_204_NO_CONTENT, data={'error': 'User not found'})
-
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'error': 'User not found'})
         serializer = UserSerializer(user)
+        return Response(serializer.data)
 
-        response = {
-            'message': f'User {user_id}',
-            'data': serializer.data
-        }
-
-        return Response(status=status.HTTP_200_OK, data=response)
-
-    def put(self, request, id):
-        user = self.get_object(id)
-
-        token = request.COOKIES.get('jwt')
-
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
-
-        if user is None:
-            return Response(status=status.HTTP_204_NO_CONTENT, data={'error': 'User not found'})
+    def put(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'error': 'User not found'})
 
         serializer = UserSerializer(user, data=request.data, partial=True)
 
@@ -195,7 +172,7 @@ class UserViewApiDetail(APIView):
             serializer.save()
 
             response = {
-                'message': f'User {id} updated successfully',
+                'message': f'User {user_id} updated successfully',
                 'data': serializer.data
             }
 
@@ -203,24 +180,16 @@ class UserViewApiDetail(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, id):
-        user = self.get_object(id)
-
-        token = request.COOKIES.get('jwt')
-
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
-
-        if user is None:
-            return Response(status=status.HTTP_204_NO_CONTENT, data={'error': 'User not found'})
-
-        if user.user_image and default_storage.exists(user.user_image.path):
-            default_storage.delete(user.user_image.path)
+    def delete(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'error': 'User not found'})
 
         user.delete()
 
         response = {
-            'message': f'User {id} deleted'
+            'message': f'User {user_id} deleted'
         }
 
         return Response(status=status.HTTP_200_OK, data=response)
