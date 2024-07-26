@@ -27,34 +27,39 @@ class CitasAllView(APIView):
 
 class CitasListView(APIView):
     def get(self, request):
-        token = request.COOKIES.get('jwt')
+        # token = request.COOKIES.get('jwt')
+        #
+        # if not token:
+        #     raise AuthenticationFailed('Unauthenticated')
+        #
+        # try:
+        #     payload = jwt.decode(token, 'secret', algorithms=['HS256'])
+        # except jwt.ExpiredSignatureError:
+        #     raise AuthenticationFailed('Unauthenticated')
+        if not hasattr(request, 'usuario'):
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
 
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
-
-        try:
-            payload = jwt.decode(token, 'secret', algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            raise AuthenticationFailed('Unauthenticated')
-
-        citas = Citas.objects.filter(paciente_id=payload['id'])
+        citas = Citas.objects.filter(paciente_id=request.usuario.id).order_by('date')
         serializer = CitasSerializer(citas, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CitasCreateView(APIView):
     def post(self, request):
-        token = request.COOKIES.get('jwt')
+        # token = request.COOKIES.get('jwt')
+        #
+        # if not token:
+        #     raise AuthenticationFailed('Unauthenticated')
+        #
+        # try:
+        #     payload = jwt.decode(token, 'secret', algorithms=['HS256'])
+        # except jwt.ExpiredSignatureError:
+        #     raise AuthenticationFailed('Unauthenticated')
 
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
+        if not hasattr(request, 'usuario'):
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
 
-        try:
-            payload = jwt.decode(token, 'secret', algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            raise AuthenticationFailed('Unauthenticated')
-
-        user = User.objects.filter(id=payload['id']).first()
+        user = User.objects.filter(id=request.usuario.id).first()
         if user is None:
             raise AuthenticationFailed('User not found')
 
