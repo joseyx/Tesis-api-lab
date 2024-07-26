@@ -8,6 +8,8 @@ from .models import Citas
 from .serializers import CitasSerializer
 from tesis.users.models import User
 
+from rest_framework.permissions import IsAuthenticated
+
 import jwt
 import datetime
 
@@ -16,11 +18,6 @@ import datetime
 class CitasAllView(APIView):
 
     def get(self, request):
-        token = request.COOKIES.get('jwt')
-
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
-
         serializer = CitasSerializer(Citas.objects.all(), many=True)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
