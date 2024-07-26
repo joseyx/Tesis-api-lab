@@ -54,7 +54,6 @@ class LoginView(APIView):
 
         payload = {
             'id': user.id,
-            'exp': datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=360),
             'iat': datetime.datetime.now(datetime.UTC)
         }
 
@@ -165,43 +164,23 @@ class UserViewApiDetail(APIView):
 
         return Response(status=status.HTTP_200_OK, data=response)
 
-    def put(self, request, id):
+    def patch(self, request, id):
         user = self.get_object(id)
+        data = request.data.copy()  # Hace una copia de los datos
 
-        token = request.COOKIES.get('jwt')
+        data.pop('user_image', None)  # Elimina el campo user_image si no está presente o es nulo
 
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
-
-        if user is None:
-            return Response(status=status.HTTP_204_NO_CONTENT, data={'error': 'User not found'})
-
-        serializer = UserSerializer(user, data=request.data, partial=True)
+        serializer = UserSerializer(user, data=data, partial=True)
 
         if serializer.is_valid():
-            phone_number = request.data.get('phone', None)
-            if phone_number:
-                if len(phone_number) < 10 or len(phone_number) > 13:
-                    raise ValidationError({'error': 'Phone number must be greater than 10 and lesser than 13'})
-
-            user_image = request.FILES.get('user_image', None)
-            if user_image:
-                if user.user_image:
-                    if default_storage.exists(user.user_image.path):
-                        default_storage.delete(user.user_image.path)
-
-                user.user_image = user_image
-
             serializer.save()
-
             response = {
                 'message': f'User {id} updated successfully',
                 'data': serializer.data
             }
-
             return Response(status=status.HTTP_200_OK, data=response)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
 
     def delete(self, request, id):
         user = self.get_object(id)
