@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from django.core.files.storage import default_storage
 from rest_framework.serializers import ValidationError
 from rest_framework.exceptions import AuthenticationFailed
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.conf import settings
 
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -109,14 +109,8 @@ class LogoutView(APIView):
 
 
 class RequestPasswordResetEmail(APIView):
-    serializer_class = ResetPasswordEmailRequestSerializer
-
     def post(self, request):
-        """
-        data = {'request': request, 'data': request.data}
-        serializer.is_valid(raise_exception=True)
-        """
-        serializer = self.serializer_class(data=request.data)
+        serializer = ResetPasswordEmailRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         email = serializer.validated_data['email']
@@ -125,9 +119,9 @@ class RequestPasswordResetEmail(APIView):
             user = User.objects.get(email=email)
             uidb64 = urlsafe_base64_encode(force_bytes(user.id))
             token = PasswordResetTokenGenerator().make_token(user)
-            current_site = get_current_site(request=request).domain
-            relative_link = reverse('password-reset-confirm', kwargs={'uidb64': uidb64, 'token': token})
-            absurl = f'http://{current_site}{relative_link}'
+            # current_site = get_current_site(request=request).domain
+            # relative_link = reverse('password-reset-confirm', kwargs={'uidb64': uidb64, 'token': token})
+            absurl = f'http://localhost:4200/reestablecer-clave/{uidb64}/{token}'
             email_body = f'Hola {user.name},\nUsa este link para reestablecer tu contraseña {absurl}'
             data = {
                 'email_body': email_body,
@@ -168,10 +162,9 @@ class PasswordTokenCheck(APIView):
                 'token': token
             }, status=status.HTTP_200_OK)
 
-        except DjangoUnicodeDecodeError as identifier:
-            if not PasswordResetTokenGenerator().check_token(user):
-                return Response({'error': 'Token is not valid, please request a new one'},
-                                status=status.HTTP_401_UNAUTHORIZED)
+        except DjangoUnicodeDecodeError:
+            return Response({'error': 'Token is not valid, please request a new one'},
+                            status=status.HTTP_401_UNAUTHORIZED)
 
 
 class SetNewPassword(APIView):
@@ -179,14 +172,18 @@ class SetNewPassword(APIView):
 
     def patch(self, request):
         serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        return Response(
-            {'success': True, 'message': 'Password reset success'
-             }, status=status.HTTP_200_OK)
+        if serializer.is_valid(raise_exception=True):
+            print('Serializer is valid.')
+            return Response(
+                {'success': True, 'message': 'Password reset success'
+                 }, status=status.HTTP_200_OK)
+        else:
+            print('Serializer is invalid.')
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewApi(APIView):
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
         users = User.objects.all()
@@ -228,12 +225,10 @@ class UserViewApiDetail(APIView):
         if user is None:
             return Response(status=status.HTTP_404_NOT_FOUND, data={'error': 'User not found'})
         serializer = UserSerializer(user)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-        return Response(status=status.HTTP_200_OK, data=response)
-
-    def patch(self, request, id):
-        user = self.get_object(id)
+    def patch(self, request, user_id):
+        user = self.get_object(user_id)
         data = request.data.copy()  # Hace una copia de los datos
 
         data.pop('user_image', None)  # Elimina el campo user_image si no está presente o es nulo
@@ -243,20 +238,15 @@ class UserViewApiDetail(APIView):
         if serializer.is_valid():
             serializer.save()
             response = {
-                'message': f'User {id} updated successfully',
+                'message': f'User {user_id} updated successfully',
                 'data': serializer.data
             }
             return Response(status=status.HTTP_200_OK, data=response)
 
         return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
 
-    def delete(self, request, id):
-        user = self.get_object(id)
-
-        token = request.COOKIES.get('jwt')
-
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
+    def delete(self, request, user_id):
+        user = self.get_object(user_id)
 
         if user is None:
             return Response(status=status.HTTP_204_NO_CONTENT, data={'error': 'User not found'})
@@ -267,7 +257,7 @@ class UserViewApiDetail(APIView):
         user.delete()
 
         response = {
-            'message': f'User {id} deleted'
+            'message': f'User {user_id} deleted'
         }
 
         return Response(status=status.HTTP_200_OK, data=response)

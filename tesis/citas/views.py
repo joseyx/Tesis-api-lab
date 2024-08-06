@@ -79,10 +79,8 @@ class CitasDetailView(APIView):
             return None
 
     def get(self, request, id):
-        token = request.COOKIES.get('jwt')
-
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
+        if not hasattr(request, 'usuario'):
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
 
         cita = self.get_object(id)
 
@@ -96,46 +94,27 @@ class CitasDetailView(APIView):
         }
         return Response(response, status=status.HTTP_200_OK)
 
-    def put(self, request, id):
-        token = request.COOKIES.get('jwt')
+    def patch(self, request, cita_id):
+        cita = self.get_object(cita_id)
+        data = request.data.copy()
 
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
-
-        try:
-            payload = jwt.decode(token, 'secret', algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            raise AuthenticationFailed('Unauthenticated')
-
-        cita = self.get_object(id)
-
-        if cita is None or cita.paciente.id != payload['id']:
-            return Response(status=status.HTTP_404_NOT_FOUND, data={'error': 'Cita not found'})
-
-        serializer = CitasSerializer(cita, data=request.data, partial=True)
+        serializer = CitasSerializer(cita, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
             response = {
-                'message': f'Cita {id} updated successfully',
+                'message': f'Cita {cita_id} updated successfully',
                 'data': serializer.data
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, id):
-        token = request.COOKIES.get('jwt')
-
-        if not token:
-            raise AuthenticationFailed('Unauthenticated')
-
-        try:
-            payload = jwt.decode(token, 'secret', algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            raise AuthenticationFailed('Unauthenticated')
+        if not hasattr(request, 'usuario'):
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
 
         cita = self.get_object(id)
 
-        if cita is None or cita.paciente.id != payload['id']:
+        if cita is None or cita.paciente.id != request.usuario.id:
             return Response(status=status.HTTP_404_NOT_FOUND, data={'error': 'Cita not found'})
 
         cita.delete()
