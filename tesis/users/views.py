@@ -19,6 +19,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 from .utils import Util
+from django.template.loader import render_to_string
 
 import jwt
 import datetime
@@ -31,7 +32,36 @@ class RegisterView(APIView):
             serializer = UserSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.data)
+
+            email = serializer.validated_data['email']
+            absurl = f'http://localhost:4200/login'
+            user = User.objects.get(email=email)
+
+            context = {
+                'user': user,
+                'login': absurl,
+            }
+            html_message = render_to_string("welcome.html", context)
+            data = {
+                'email_body': html_message,
+                'to_email': [user.email],
+                'email_subject': 'Mensaje de Bienvenida'
+            }
+            try:
+                Util.send_email(data)
+                return Response(
+                    {
+                        'success': 'Se ha enviado el mensaje de bienvenida',
+                        'data': serializer.data
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            except Exception as e:
+                print(f'Error sending email: {e}')
+                return Response(
+                    {'error': 'Error al enviar el correo electrónico'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
         except ValidationError as e:
             if 'email' in e.detail:
                 return Response(
@@ -122,9 +152,17 @@ class RequestPasswordResetEmail(APIView):
             # current_site = get_current_site(request=request).domain
             # relative_link = reverse('password-reset-confirm', kwargs={'uidb64': uidb64, 'token': token})
             absurl = f'http://localhost:4200/reestablecer-clave/{uidb64}/{token}'
-            email_body = f'Hola {user.name},\nUsa este link para reestablecer tu contraseña {absurl}'
+            #email_body = f'Hola {user.name},\nUsa este link para reestablecer tu contraseña {absurl}'
+            user_name = user.name.capitalize()
+
+            context = {
+                'user': user,
+                'reset_link': absurl,
+                'user_name': user_name
+            }
+            html_message = render_to_string("reset-password.html", context)
             data = {
-                'email_body': email_body,
+                'email_body': html_message,
                 'to_email': [user.email],
                 'email_subject': 'Reestablecer contraseña'
             }
