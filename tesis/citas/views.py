@@ -94,15 +94,15 @@ class CitasDetailView(APIView):
         }
         return Response(response, status=status.HTTP_200_OK)
 
-    def patch(self, request, cita_id):
-        cita = self.get_object(cita_id)
+    def patch(self, request, id):
+        cita = self.get_object(id)
         data = request.data.copy()
 
         serializer = CitasSerializer(cita, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
             response = {
-                'message': f'Cita {cita_id} updated successfully',
+                'message': f'Cita {id} updated successfully',
                 'data': serializer.data
             }
             return Response(response, status=status.HTTP_200_OK)
@@ -114,8 +114,9 @@ class CitasDetailView(APIView):
 
         cita = self.get_object(id)
 
-        if cita is None or cita.paciente.id != request.usuario.id:
-            return Response(status=status.HTTP_404_NOT_FOUND, data={'error': 'Cita not found'})
+        # Verificar si el usuario es administrador o la cita pertenece al usuario
+        if cita is None or (cita.paciente.id != request.usuario.id and not request.usuario.role == 'admin'):
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'error': 'Cita not found or not authorized'})
 
         cita.delete()
         response = {

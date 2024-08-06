@@ -6,7 +6,7 @@ class User(AbstractUser):
     ROLES = [
         ('cliente', 'User'),
         ('admin', 'Administrator'),
-        ('medico', 'Médico')
+        ('médico', 'Médico')
         # Add more roles as needed
     ]
 
