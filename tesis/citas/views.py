@@ -62,40 +62,46 @@ class CitasCreateView(APIView):
 
         serializer = CitasSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        cita = serializer.save(paciente=user)
+        serializer.save(paciente=user)
 
-        fecha_formateada = format_datetime(cita.date, format='EEEE, d MMMM yyyy, H:mm:ss', locale='es_ES')
-
-        absurl = 'http://localhost:4200/perfil'
-        #email_body = (f'Hola {user.name}, este es un mensaje para confirmarte que tu '
-                      #f'cita ha sido agendada con exito!\nPuedes revisarla aquí {absurl}')
-        user_name = user.name.capitalize()
-
-        context = {
-            'user': user,
-            'perfil': absurl,
-            'user_name': user_name,
-            'cita': serializer.data,
-            'fecha_formateada': fecha_formateada
+        response = {
+            'message': 'Appointment created successfully',
+            'data': serializer.data
         }
-        html_message = render_to_string("cita-confirmation.html", context)
-        data = {
-            'email_body': html_message,
-            'to_email': [user.email],
-            'email_subject': 'Cita agendada'
-        }
+        return Response(response, status=status.HTTP_200_OK)
 
-        try:
-            Util.send_email(data)
-            return Response(
-                {'success': 'Se ha enviado a su correo la confirmación de la cita'},
-                status=status.HTTP_200_OK
-            )
-        except Exception as e:
-            return Response(
-                {'error': 'Error al enviar el correo electrónico'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        # fecha_formateada = format_datetime(cita.date, format='EEEE, d MMMM yyyy, H:mm:ss', locale='es_ES')
+        #
+        # absurl = 'http://localhost:4200/perfil'
+        # #email_body = (f'Hola {user.name}, este es un mensaje para confirmarte que tu '
+        #               #f'cita ha sido agendada con exito!\nPuedes revisarla aquí {absurl}')
+        # user_name = user.name.capitalize()
+        #
+        # context = {
+        #     'user': user,
+        #     'perfil': absurl,
+        #     'user_name': user_name,
+        #     'cita': serializer.data,
+        #     'fecha_formateada': fecha_formateada
+        # }
+        # html_message = render_to_string("cita-confirmation.html", context)
+        # data = {
+        #     'email_body': html_message,
+        #     'to_email': [user.email],
+        #     'email_subject': 'Cita agendada'
+        # }
+        #
+        # try:
+        #     Util.send_email(data)
+        #     return Response(
+        #         {'success': 'Se ha enviado a su correo la confirmación de la cita'},
+        #         status=status.HTTP_200_OK
+        #     )
+        # except Exception as e:
+        #     return Response(
+        #         {'error': 'Error al enviar el correo electrónico'},
+        #         status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        #     )
 
 
 class CitasDetailView(APIView):
