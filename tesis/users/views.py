@@ -32,36 +32,7 @@ class RegisterView(APIView):
             serializer = UserSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-
-            email = serializer.validated_data['email']
-            absurl = f'http://localhost:4200/login'
-            user = User.objects.get(email=email)
-
-            context = {
-                'user': user,
-                'login': absurl,
-            }
-            html_message = render_to_string("welcome.html", context)
-            data = {
-                'email_body': html_message,
-                'to_email': [user.email],
-                'email_subject': 'Mensaje de Bienvenida'
-            }
-            try:
-                Util.send_email(data)
-                return Response(
-                    {
-                        'success': 'Se ha enviado el mensaje de bienvenida',
-                        'data': serializer.data
-                    },
-                    status=status.HTTP_200_OK,
-                )
-            except Exception as e:
-                print(f'Error sending email: {e}')
-                return Response(
-                    {'error': 'Error al enviar el correo electrónico'},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             if 'email' in e.detail:
                 return Response(
