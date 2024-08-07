@@ -229,6 +229,7 @@ class UserViewApi(APIView):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     def post(self, request):
+        request.data['role'] = 'cliente'
         serializer = UserSerializer(data=request.data)
 
         try:
